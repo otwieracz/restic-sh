@@ -1,0 +1,93 @@
+restic-sh(1)                General Commands Manual               restic-sh(1)
+
+
+
+NAME
+       restic-sh - simple shell wrapper over restic backup program
+
+SYNOPSIS
+       restic-sh config-file-name backup|cleanup|unlock|prune|check
+       restic-sh all backup|cleanup|unlock|prune|check
+       restic-sh config-file-name snapshot [name]
+       restic-sh all snapshot [name]
+       restic-sh version
+
+DESCRIPTION
+       restic-sh  acts  as a simple wrapper over restic backup program. It has
+       no external dependencies (other than restic )  and  is  configured  via
+       simple shell configuration file.
+
+       restic-sh looks for config-file-name.conf in /etc/restic-sh
+
+       When there is string all instead of config-file-name , every configura‐
+       tion file from /etc/restic-sh with .conf  suffix  is  used,  one  after
+       another.  This behaviour is used, for example, in provided systemd unit
+       to perfor all user-defined backups regularly.
+
+       Additionally, each repository specified in  configuration  file,  there
+       has  also  be  corresponding REPO-NAME.pass file in /etc/restic-sh with
+       plain-text password to this repository.
+
+       restic-sh provides systemd service for automatic backups. Provided ser‐
+       vice runs every 4 hours.
+
+OPTIONS
+       backup Backup all defined datasets
+
+       snapshots [name]
+              List  all  snapshots  of  all  defined datasets or for only name
+              dataset
+
+       cleanup
+              Delete all no longer needed backups  (according  to  rules  from
+              configuration  file,  see  sample configuration in EXAMPLES sec‐
+              tion)
+
+       unlock Try to unlock all remote repositories, useful in rare  cases  of
+              some stale locks.
+
+       prune  Free  disk  space by removing chunks of data not used anymore by
+              any of the backups.
+
+       check  Check all remote repositories for inconsistencies.
+
+EXAMPLES
+       restic-sh configuration file follows format:
+
+              DEST="rest:http://user:password@host:8000/repo_root"
+              DATASETS=( "REPO_NAME:DIRECTORY)" "my_home_repo:/home" )
+              LOCKFILE="/tmp/restic-running"
+
+              ## CLEANUP command configuration
+              # Always keep last 5 backups
+              LAST=5
+              # Complete history of last 48 hours
+              HOURLY=48
+              # One backup each day for month
+              DAILY=31
+              # For each quarter (12 weeks) , keep one backup every week
+              WEEKLY=12
+              # One backup every month for 6 months
+              MONTHLY=6
+              # One backup per year, for 3 years
+              YEARLY=3
+
+       In this example configuration, /home directory will be backed  up  into
+       rest:http://user:password@host:8000/repo_root/my_home_repo
+
+       Any  repository specification accepted by restic is expected to work as
+       expected via restic-sh wrapper.
+
+
+SEE ALSO
+       restic(1)
+
+BUGS
+       No known bugs.
+
+AUTHOR
+       Slawomir Gonet <slawek@otwiera.cz>
+
+
+
+version 0.1                       2017.10.14                      restic-sh(1)
