@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+VERSION=0.1
+
+CFGDIR="/etc/restic-sh"
+CFGFILE="${1}"
+CMD="${2}"
+
+function fail() {
+    echo -e "FATAL ERROR: ${1}" &> /dev/stderr
+    [[ -f "${LOCKFILE}" ]] && {
+        rm "${LOCKFILE}"
+    }
+    exit 1
+}
+
+[[ "${CFGFILE}" == "all" ]] && {
+    for cfgfile in "${CFGDIR}/"*.conf
+    do
+        $0 "${cfgfile}" ${CMD} ${3}
+    done
+    exit 0
+}
+
+CFGPATH="${CFGDIR}/$(basename -s .conf ${CFGFILE}).conf" 
+
+[[ -f "${CFGPATH}" ]] && {
+    source "${CFGPATH}" &> /dev/null
+} || {
+    fail "No such config: '${CFGFILE}' (${CFGPATH} does not exist)" 
+}
+
+[[ -f "${LOCKFILE}" ]] && {
+    fail "Restic is already running!"
+} || {
+    [[ "${CMD}" == "backup" ]] && {
+        touch "${LOCKFILE}"
+
+        for dataset in ${DATASETS[@]}
+        do
+            name="$(echo ${dataset} | awk -F ':' '{print $1}')"
+            path="$(echo ${dataset} | awk -F ':' '{print $2}')"
+
+            passfile="${CFGDIR}/${name}.pass"
+            test -f "${passfile}" || fail "No passfile '${passfile}' for dataset '${dataset}'"
+            export RESTIC_PASSWORD"=$(cat ${passfile})"
+	    
+            echo ">> ${path} => ${DEST}_${name}"
+
+            restic -q -r "${DEST}_${name}" backup -x "${path}"
+        done
+
+        rm "${LOCKFILE}"
+        exit 0
+    }
+
+    [[ "${CMD}" == "snapshots" || "${CMD}" == "snaps" && -n "${3}" ]] && {
+        name="${3}"
+
+        passfile="${CFGDIR}/${name}.pass"
+        test -f "${passfile}" || fail "No passfile '${passfile}' for dataset '${dataset}'"
+        export RESTIC_PASSWORD"=$(cat ${passfile})"
+
+	echo ">> ${DEST}_${name}:"
+
+        restic -q -r "${DEST}_${name}" snapshots
+        exit 0
+    }
+
+    [[ "${CMD}" == "cleanup" || "${CMD}" == "clean" ]] && {
+        touch "${LOCKFILE}"
+
+        for dataset in ${DATASETS[@]}
+        do
+            name="$(echo ${dataset} | awk -F ':' '{print $1}')"
+            path="$(echo ${dataset} | awk -F ':' '{print $2}')"
+
+            echo "cleaning \`$name'"
+            passfile="${CFGDIR}/${name}.pass"
+            test -f "${passfile}" || fail "No passfile '${passfile}' for dataset '${dataset}'"
+            export RESTIC_PASSWORD"=$(cat ${passfile})"
+
+            restic -r "${DEST}_${name}" forget \
+                --keep-last ${LAST} \
+                --keep-hourly ${HOURLY} \
+                --keep-daily ${DAILY} \
+                --keep-weekly ${WEEKLY} \
+                --keep-monthly ${MONTHLY} \
+                --keep-yearly ${YEARLY} \
+                --prune
+        done
+
+        rm "${LOCKFILE}"
+        exit 0
+    }
+
+    [[ "${CMD}" == "unlock" ]] && {
+        touch "${LOCKFILE}"
+
+        for dataset in ${DATASETS[@]}
+        do
+            name="$(echo ${dataset} | awk -F ':' '{print $1}')"
+            path="$(echo ${dataset} | awk -F ':' '{print $2}')"
+
+            echo "unlocking \`$name'"
+            passfile="${CFGDIR}/${name}.pass"
+            test -f "${passfile}" || fail "No passfile '${passfile}' for dataset '${dataset}'"
+            export RESTIC_PASSWORD"=$(cat ${passfile})"
+
+            restic -q -r "${DEST}_${name}" unlock
+        done
+
+        rm "${LOCKFILE}"
+        exit 0
+    }
+
+    [[ "${CMD}" == "prune" ]] && {
+        touch "${LOCKFILE}"
+
+        for dataset in ${DATASETS[@]}
+        do
+            name="$(echo ${dataset} | awk -F ':' '{print $1}')"
+            path="$(echo ${dataset} | awk -F ':' '{print $2}')"
+
+            echo "pruning \`$name'"
+            passfile="${CFGDIR}/${name}.pass"
+            test -f "${passfile}" || fail "No passfile '${passfile}' for dataset '${dataset}'"
+            export RESTIC_PASSWORD"=$(cat ${passfile})"
+
+            restic -r "${DEST}_${name}" prune
+        done
+
+        rm "${LOCKFILE}"
+        exit 0
+    }
+
+    [[ "${CMD}" == "check" ]] && {
+        touch ${LOCKFILE}
+
+        for dataset in ${DATASETS[@]}
+        do
+            name="$(echo ${dataset} | awk -F ':' '{print $1}')"
+            path="$(echo ${dataset} | awk -F ':' '{print $2}')"
+
+            echo "checking \`$name'"
+            passfile="${CFGDIR}/${name}.pass"
+            test -f "${passfile}" || fail "No passfile '${passfile}' for dataset '${dataset}'"
+            export RESTIC_PASSWORD"=$(cat ${passfile})"
+
+            restic -r "${DEST}_${name}" check
+        done
+
+        rm "${LOCKFILE}"
+        exit 0
+    }
+
+    [[ "${CMD}" == "version" || "${CFGFILE}" == "version" ]] && {
+        echo "restic-sh version ${VERSION}"
+        exit 0
+    }
+}
+
+fail "Unknown command.\n\nAvailable commands:\n\n * ${0} config-file <backup|snapshots|cleanup|unlock|prune|check>\n * ${0} version\n"
+

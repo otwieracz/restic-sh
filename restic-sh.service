@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup all restic-sh datasets
+Wants=network-online.target
+
+[Service]
+User=root
+ExecStart=/usr/sbin/restic-sh all backup
+
+[Install]
+WantedBy=multi-user.target

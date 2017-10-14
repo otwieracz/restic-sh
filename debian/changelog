@@ -1,0 +1,5 @@
+restic-sh (0.1) UNRELEASED; urgency=medium
+
+  * Initial release.
+
+ -- Slawomir Gonet <slawek@otwiera.cz>  Sat, 14 Oct 2017 09:36:47 +0200

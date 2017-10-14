@@ -1,0 +1,15 @@
+Source: restic-sh
+Maintainer: Slawomir Gonet <slawek@otwiera.cz>
+Priority: optional
+Section: utils
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.1.0
+Homepage: https://github.com/otwieracz/restic-sh
+
+Package: restic-sh
+Architecture: any
+Depends: ${misc:Depends}, restic
+Description: simple shell wrapper around restic
+ restic-sh is simple shell wrapper around restic, enabling unattened backup
+ creation and maintenance via restic mechanisms 
+
